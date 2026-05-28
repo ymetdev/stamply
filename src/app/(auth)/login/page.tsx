@@ -10,30 +10,33 @@ import {
   updateProfile,
 } from "firebase/auth";
 import { auth, googleProvider } from "@/lib/firebase";
+import { useAuthContext } from "@/context/AuthContext";
 import { toast } from "sonner";
 import { Mail, Lock, User, Loader2 } from "lucide-react";
 
 export default function LoginPage() {
   const router = useRouter();
+  const { firebaseUser, loading: authLoading } = useAuthContext();
   const [mode, setMode] = useState<"login" | "register">("login");
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "" });
 
-  // Handle redirect result when coming back from Google
+  // Redirect to home if already authenticated (handles Google redirect result too)
   useEffect(() => {
-    setLoading(true);
-    getRedirectResult(auth)
-      .then((result) => {
-        if (result?.user) {
-          router.replace("/");
-        }
-      })
-      .catch((err) => {
+    if (!authLoading && firebaseUser) {
+      router.replace("/");
+    }
+  }, [authLoading, firebaseUser, router]);
+
+  // Handle any pending redirect result errors
+  useEffect(() => {
+    getRedirectResult(auth).catch((err) => {
+      if (err?.code) {
         console.error("[Google Redirect Error]", err);
-        toast.error(`Google sign-in failed: ${(err as {code?: string})?.code ?? String(err)}`);
-      })
-      .finally(() => setLoading(false));
-  }, [router]);
+        toast.error(`Google sign-in failed: ${err.code}`);
+      }
+    });
+  }, []);
 
   async function handleGoogle() {
     setLoading(true);
