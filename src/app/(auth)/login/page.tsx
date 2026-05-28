@@ -3,8 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  signInWithRedirect,
-  getRedirectResult,
+  signInWithPopup,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
@@ -21,39 +20,27 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "" });
 
-  // Redirect to home if already authenticated (handles Google redirect result too)
+  // Redirect to home if already authenticated
   useEffect(() => {
     if (!authLoading && firebaseUser) {
       router.replace("/");
     }
   }, [authLoading, firebaseUser, router]);
 
-  // Process Google redirect result on page load
-  useEffect(() => {
-    async function handleRedirect() {
-      try {
-        const result = await getRedirectResult(auth);
-        if (result?.user) {
-          router.replace("/");
-        }
-      } catch (err: unknown) {
-        const code = (err as { code?: string })?.code;
-        if (code) {
-          console.error("[Google Redirect Error]", err);
-          toast.error(`Google sign-in failed: ${code}`);
-        }
-      }
-    }
-    handleRedirect();
-  }, [router]);
-
   async function handleGoogle() {
     setLoading(true);
     try {
-      await signInWithRedirect(auth, googleProvider);
+      await signInWithPopup(auth, googleProvider);
+      router.replace("/");
     } catch (err) {
-      console.error("[Google Sign-In Error]", err);
-      toast.error(`Google sign-in failed: ${(err as {code?: string})?.code ?? String(err)}`);
+      const code = (err as { code?: string })?.code;
+      if (code === "auth/popup-blocked") {
+        toast.error("Popup was blocked. Please allow popups for this site in your browser settings, then try again.");
+      } else if (code === "auth/popup-closed-by-user" || code === "auth/cancelled-popup-request") {
+        // User closed it — do nothing
+      } else if (code) {
+        toast.error(`Google sign-in failed: ${code}`);
+      }
       setLoading(false);
     }
   }
