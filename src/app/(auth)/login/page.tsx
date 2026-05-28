@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import {
-  signInWithPopup,
+  signInWithRedirect,
+  getRedirectResult,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   updateProfile,
@@ -18,15 +19,29 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({ name: "", email: "", password: "" });
 
+  // Handle redirect result when coming back from Google
+  useEffect(() => {
+    setLoading(true);
+    getRedirectResult(auth)
+      .then((result) => {
+        if (result?.user) {
+          router.replace("/");
+        }
+      })
+      .catch((err) => {
+        console.error("[Google Redirect Error]", err);
+        toast.error(`Google sign-in failed: ${(err as {code?: string})?.code ?? String(err)}`);
+      })
+      .finally(() => setLoading(false));
+  }, [router]);
+
   async function handleGoogle() {
     setLoading(true);
     try {
-      await signInWithPopup(auth, googleProvider);
-      router.replace("/");
+      await signInWithRedirect(auth, googleProvider);
     } catch (err) {
       console.error("[Google Sign-In Error]", err);
       toast.error(`Google sign-in failed: ${(err as {code?: string})?.code ?? String(err)}`);
-    } finally {
       setLoading(false);
     }
   }
