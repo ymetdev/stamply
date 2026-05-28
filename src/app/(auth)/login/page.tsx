@@ -28,15 +28,24 @@ export default function LoginPage() {
     }
   }, [authLoading, firebaseUser, router]);
 
-  // Handle any pending redirect result errors
+  // Process Google redirect result on page load
   useEffect(() => {
-    getRedirectResult(auth).catch((err) => {
-      if (err?.code) {
-        console.error("[Google Redirect Error]", err);
-        toast.error(`Google sign-in failed: ${err.code}`);
+    async function handleRedirect() {
+      try {
+        const result = await getRedirectResult(auth);
+        if (result?.user) {
+          router.replace("/");
+        }
+      } catch (err: unknown) {
+        const code = (err as { code?: string })?.code;
+        if (code) {
+          console.error("[Google Redirect Error]", err);
+          toast.error(`Google sign-in failed: ${code}`);
+        }
       }
-    });
-  }, []);
+    }
+    handleRedirect();
+  }, [router]);
 
   async function handleGoogle() {
     setLoading(true);
